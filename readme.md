@@ -74,4 +74,6 @@ And the maximum possible is 90%:
  ┕━┙                 ┕━┙                 ┕━┙                 ┕━
 ```
 
-This allows us to approximate an audio signal using “PWM”. This isn’t strictly PWM since bit patterns with different switching frequencies can be used as seen above, but the principle is the same.
+With this technique we can now approximate an audio signal. This isn’t strictly PWM since bit patterns with different switching frequencies can be used as seen above, but the principle is the same.
+
+Running the UART at 3M baud gives a “audio sample rate” of 300k: a bit too high compared to the common 44.1k or 48k. We could simply resample our music to 300k, convert each sample to one “PWM” byte, and feed it to the UART; however, with only 9 possible signal levels (compared to the 256 levels with normal 8-bit samples or 65536 with 16-bit samples), the result is rather unpleasant.
