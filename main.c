@@ -2,7 +2,7 @@
 
 const int LEVELS_EACH_BYTE = 9; // 0b00000000, 0b10000000, 0b11000000, ..., 0b11111111
 const double LEVEL_STEP_SIZE = 256.0f / LEVELS_EACH_BYTE; // For 8 bit samples, this many values will result in each PWM level
-const int DITHER_RATE_FACTOR = 6; // Approximate each sample with 8 PWM bytes
+const int DITHER_RATE_FACTOR = 6; // Approximate each sample with 6 PWM bytes
 const double DITHER_OFFSET_STEP = LEVEL_STEP_SIZE / DITHER_RATE_FACTOR;
 
 int main(int argc, char const *argv[])
