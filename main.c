@@ -27,12 +27,12 @@ int main(int argc, char const *argv[])
     unsigned int byte_count = 0;
     while (!feof(file_in)) {
         unsigned char sample = fgetc(file_in);
-        fputc(0xFF << (int)(sample / LEVEL_STEP_SIZE), file_out);
-        fputc(0xFF << (int)((sample + 2 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE), file_out);
-        fputc(0xFF << (int)((sample + 4 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE), file_out);
-        fputc(0xFF << (int)((sample + 1 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE), file_out);
-        fputc(0xFF << (int)((sample + 3 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE), file_out);
-        fputc(0xFF << (int)((sample + 5 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE), file_out);
+        fputc(~(0xFF >> (int)(sample / LEVEL_STEP_SIZE)), file_out);
+        fputc(~(0xFF >> (int)((sample + 2 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE)), file_out);
+        fputc(~(0xFF >> (int)((sample + 4 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE)), file_out);
+        fputc(~(0xFF >> (int)((sample + 1 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE)), file_out);
+        fputc(~(0xFF >> (int)((sample + 3 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE)), file_out);
+        fputc(~(0xFF >> (int)((sample + 5 * DITHER_OFFSET_STEP) / LEVEL_STEP_SIZE)), file_out);
         byte_count++;
     }
 
