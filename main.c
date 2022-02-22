@@ -36,7 +36,7 @@ int main(int argc, char const *argv[])
         byte_count++;
     }
 
-    printf("Processed %ld samples\n", byte_count);
+    printf("Processed %u samples\n", byte_count);
     fclose(file_in);
     fclose(file_out);
 
