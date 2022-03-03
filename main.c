@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <sndfile.h>
 
-// There are 8 possible output waveforms (and thus different duty cycles) for one byte
+// There are 9 possible output waveforms (and thus different duty cycles)
+// for one byte. This gives 8 intervals between the levels.
 const int NUM_LEVELS = 8;
 
 // For 8 bit samples, this many values will result in each PWM level
-const int INTERVAL_SIZE = 256 / NUM_LEVELS;
+const double INTERVAL_SIZE = 1.0 / NUM_LEVELS;
 
 // Dithering by 8x, each sample approximated with 8 output bytes
 const double DITHERED_INTERVAL_SIZE = INTERVAL_SIZE / 8;
@@ -42,52 +44,56 @@ const uint8_t DITHER_PATTERNS[8] =
 
 int main(int argc, char const *argv[])
 {
-    if (argc != 3) {
-        printf("Usage: %s <u8_mono_wav_file> <output_file>\n", argv[0]);
+    if (argc != 3)
+    {
+        printf("Usage: %s <input_audio_file> <output_file>\n", argv[0]);
         return 1;
     }
 
-    FILE* file_in = fopen(argv[1], "rb");
-    if (!file_in) {
+    SF_INFO audio_input_format;
+    SNDFILE *file_audio_in = sf_open(argv[1], SFM_READ, &audio_input_format);
+    if (!file_audio_in)
+    {
         printf("Couldn't open %s for input\n", argv[1]);
         return 2;
     }
 
-    FILE* file_out = fopen(argv[2], "wb+");
-    if (!file_out) {
+    FILE *file_binary_out = fopen(argv[2], "wb+");
+    if (!file_binary_out)
+    {
         printf("Couldn't open %s\n for output", argv[2]);
         return 2;
     }
 
-    while (!feof(file_in)) {
-        double sample = fgetc(file_in);
-        double scaled_sample   = sample / INTERVAL_SIZE;
-        int    quantized_level = sample / INTERVAL_SIZE;
+    while (1)
+    {
+        double sample;
+        if (!sf_read_double(file_audio_in, &sample, 1)) // -1 <= sample <= 1
+        {
+            break;
+        }
+
+        double sample_normalized = (sample + 1.0) * 4.49; // 0 to 9 FIXME
+        int sample_quantized = (int)sample_normalized;
+        printf("%d", sample_quantized);
 
         // Amount of correction needed as fraction of a level
         // 0 <= error < 1
-        double error = scaled_sample - quantized_level;
+        double error = sample_normalized - sample_quantized;
 
         // Choose from 8 fine levels to compensate for error
         // 0 <= dither_step < 8 fits DITHER_PATTERNS[]
-        int    dither_step = error * 8; 
+        int dither_step = error * 8;
 
-        for (int byte_in_group = 0; byte_in_group < 8; byte_in_group++)
+        for (int i = 0; i < 8; i++)
         {
-            fputc
-            (
-                BYTE_WAVEFORMS
-                [
-                    quantized_level
-                    + (((1 << byte_in_group) & DITHER_PATTERNS[dither_step]) ? 1 : 0)
-                ],
-                file_out
-            );
+            uint8_t byte_to_write = BYTE_WAVEFORMS[sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0)];
+            fputc(byte_to_write, file_binary_out);
         }
     }
 
-    fclose(file_in);
-    fclose(file_out);
+    sf_close(file_audio_in);
+    fclose(file_binary_out);
 
     return 0;
 }
