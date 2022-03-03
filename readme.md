@@ -1,45 +1,41 @@
-# Play (fairly good quality) music through your USB-to-UART adapter!
+# Play (fairly good quality) music through your USB-to-UART adaptor!
 
 ## Usage
 
+In the “samples” folder there are ready-made files that can be fed directly to a serial port. For a quick test, take the file at the appropriate speed, and start from step 6 below.
+
 All filenames in the commands below are examples only and do not affect how this program functions. These instructions, especially feeding the resulting file to the serial port, assume a Linux machine.
 
-- Compile this program, using for example `cc -O2 main.c -o uart_pwm`
+1. Compile this program, using for example `cc -O2 main.c -o uart_pwm`
 
-- Find your UART adaptor's maximum symbol rate. Common ones are:
+2. Find your UART adaptor's maximum symbol rate. Common ones are:
 
 	| Chip   | Max baud | Stable baud (less noise) |
 	| ------ | -------- | ------------------------ |
 	| FT232R | 3M       | ==TODO==                 |
 	| CH340  | 2M       | ==TODO==                 |
 
-- Calculate audio sample rate = symbol rate / 10 / 8.
+3. Calculate audio sample rate = symbol rate / 10 / 8.
 
-- Convert audio file to an unsigned 8-bit mono WAV at this sample rate. Examples:
-  - With FFmpeg: `ffmpeg -i input.mp3 -ar <sample_rate> -ac 1 -c:a pcm_u8 resampled.wav`
-  
-  - With SoX: `sox input.flac -r <sample_rate> -c 1 -e unsigned-integer -b 8 resampled.wav`
-  
-    > From a few tests I found SoX to give better sound quality than FFmpeg when converting to 8-bit. SoX can’t directly handle compressed audio formats like MP3, so they need to go through FFmpeg first:
-  	>
-  	> `ffmpeg -i original.mp3 -c:a pcm_f32le intermediate.wav` at the original sample rate and with high precision (float samples), and then
-  	>
-  	> `sox intermediate.wav -r <sample_rate> -c 1 -e unsigned-integer -b 8 resampled.wav` ready for processing.
-  	
-  
-- Run this program: `./uart_pwm resampled.wav output.bin`
+4. Convert your audio file to a mono WAV at this sample rate. Examples:
+      - With FFmpeg: `ffmpeg -i input.mp3 -ar <sample_rate> -ac 1 resampled.wav`
+    
+      - With SoX (supports mostly uncompressed formats only): `sox input.flac -r <sample_rate> -c 1 resampled.wav`
 
-- Set your serial port to the desired speed, and disable any text processing (“raw”): `stty -F /dev/ttyUSB0 raw ospeed <baud> ispeed <baud>`
+5. Run this program: `./uart_pwm resampled.wav output.bin`
 
-	> I’m setting `ispeed` too because if I set only `ospeed`, the command fails the first time and needs to be run again to correctly set the speed.
+6. Set your serial port to the desired speed, and disable any text processing (“raw”): `stty -F /dev/ttyUSB0 raw ospeed <baud> ispeed <baud>`
+
+	> I’m setting `ispeed` too because if I set only `ospeed` the command fails the first time and needs to be run again to succeed, for some reason that I haven’t investigated.
 	
-- Connect speakers / headphones to the TX and ground of your UART adapter through a current-limiting resistor (a few kΩ).
+7. Connect speakers / headphones to the TX and ground of your UART adaptor through a current-limiting resistor (a few kΩ).
 
-- Feed the output file to the serial port: `cat output.bin > /dev/ttyUSB0`.
-- Enjoy the music!
+8. Feed the output file to the serial port: `cat output.bin > /dev/ttyUSB0`.
+
+9. Enjoy the music!
 
 
-## Outputting a PWM signal
+## Outputting a PWM Signal
 
 ```
    Start              Stop
@@ -102,6 +98,6 @@ and the maximum is 90%:
 
 > Being unable to go to 0% and 100% should have little effect, as it just linearly shrinks the output range to 10% — 90%.
 
-## Byte patterns
+## Byte Patterns
 
 ==TODO==
