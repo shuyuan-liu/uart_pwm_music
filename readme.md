@@ -1,21 +1,45 @@
-# Play music through your USB-to-UART adapter!
+# Play (fairly good quality) music through your USB-to-UART adapter!
 
 ## Usage
 
-- Compile this program with your C compiler
-- Resample your audio file to 50k samples per second and convert to a mono unsigned-8-bit WAV
-	- Example using FFmpeg: `ffmpeg -i input.mp3 -ar 50k -ac 1 -c:a pcm_u8 resampled.wav`
-	- Example using SoX: `sox input.wav -r 50k -c 1 -e unsigned-integer -b 8 resampled.wav`
+All filenames in the commands below are examples only and do not affect how this program functions. These instructions, especially feeding the resulting file to the serial port, assume a Linux machine.
 
-- Run this program to process the WAV file
-	- Assuming the compiler named the executable `a.out`, run `./a.out resampled.wav output.bin`
+- Compile this program, using for example `cc -O2 main.c -o uart_pwm`
 
-- Connect headphones / amplified speaker to UART TX through a current limiting resistor
-- `cat` the resulting file to the UART port at 3,000,000 baud
-	- Example: `cat output.bin >/dev/ttyUSB0`
+- Find your UART adaptor's maximum symbol rate. Common ones are:
+
+	| Chip   | Max baud | Stable baud (less noise) |
+	| ------ | -------- | ------------------------ |
+	| FT232R | 3M       | ==TODO==                 |
+	| CH340  | 2M       | ==TODO==                 |
+
+- Calculate audio sample rate = symbol rate / 10 / 8.
+
+- Convert audio file to an unsigned 8-bit mono WAV at this sample rate. Examples:
+  - With FFmpeg: `ffmpeg -i input.mp3 -ar <sample_rate> -ac 1 -c:a pcm_u8 resampled.wav`
+  
+  - With SoX: `sox input.flac -r <sample_rate> -c 1 -e unsigned-integer -b 8 resampled.wav`
+  
+    > From a few tests I found SoX to give better sound quality than FFmpeg when converting to 8-bit. SoX can’t directly handle compressed audio formats like MP3, so they need to go through FFmpeg first:
+  	>
+  	> `ffmpeg -i original.mp3 -c:a pcm_f32le intermediate.wav` at the original sample rate and with high precision (float samples), and then
+  	>
+  	> `sox intermediate.wav -r <sample_rate> -c 1 -e unsigned-integer -b 8 resampled.wav` ready for processing.
+  	
+  
+- Run this program: `./uart_pwm resampled.wav output.bin`
+
+- Set your serial port to the desired speed, and disable any text processing (“raw”): `stty -F /dev/ttyUSB0 raw ospeed <baud> ispeed <baud>`
+
+	> I’m setting `ispeed` too because if I set only `ospeed`, the command fails the first time and needs to be run again to correctly set the speed.
+	
+- Connect speakers / headphones to the TX and ground of your UART adapter through a current-limiting resistor (a few kΩ).
+
+- Feed the output file to the serial port: `cat output.bin > /dev/ttyUSB0`.
+- Enjoy the music!
 
 
-## How it works
+## Outputting a PWM signal
 
 ```
    Start              Stop
@@ -25,9 +49,9 @@
       LSB ········· MSB
 ```
 
-> While UART defines how to send data as a series of bits, it is standards like RS-232, RS-485, etc. that define the voltage levels that represent 0 and 1. Hence in the diagram I’ve written “0” and “1” instead of “high” and “low”. For common USB-to-UART adapters, 0 = low and 1 = high. Some adapter chips can be set to invert the levels, but this is uncommon.
+> While UART defines how to send data as a series of bits, it is standards like RS-232, RS-485, etc. that define the voltage levels that represent 0 and 1. Hence in the diagram I’ve written “0” and “1” instead of “high” and “low”. For common USB-to-UART adaptors, 0 = low and 1 = high. Some adaptor chips can be set to invert the levels, but this is uncommon.
 
-The diagram above shows how one byte is transferred over a UART configured to use 8 data bits, no parity bit, and 1 stop bit (“8N1”), totalling 10 bits per packet. The data is sent LSB first. When sending multiple bytes in succession, there is usually no space between each packet – the stop bit of a packet is immediately followed by the start bit of the next packet:
+The diagram above shows one byte transferred over a UART configured with 8 data bits, no parity bit, and 1 stop bit (“8N1”), totalling 10 bits per byte of data sent. This is a very common configuration and usually the default. When sending multiple bytes in succession, there is usually no space between packets – the stop bit of one packet is immediately followed by the start bit of the next packet:
 
 ```
  ┌────── byte 1 ─────┬────── byte 2 ─────┬────── byte 3 ─────┐
@@ -36,7 +60,9 @@ The diagram above shows how one byte is transferred over a UART configured to us
  ┕━┷━┷━┷━┷━┷━┷━┷━┷━┙ ┕━┷━┷━┷━┷━┷━┷━┷━┷━┙ ┕━┷━┷━┷━┷━┷━┷━┷━┷━┙ ┕━
 ```
 
-By changing the 8 data bits, a PWM effect can be achieved. To make a 50% duty cycle for example, the data byte `11110000` can be used.
+> Unfortunately for us, some chips can pause briefly between bytes when running at high speeds. While this doesn’t violate the UART protocol, it causes additional noise and slowdown in the audio.
+
+By changing the 8 data bits, a PWM effect can be achieved. To make a 50% duty cycle for example, the data byte `11110000` can be used. Note that data is sent LSB first over UART, thus the reversed bits in each byte.
 
 ```
  ┌────── byte 1 ─────┬────── byte 2 ─────┬────── byte 3 ─────┐
@@ -45,7 +71,7 @@ By changing the 8 data bits, a PWM effect can be achieved. To make a 50% duty cy
  ┕━━━━━━━━━┙         ┕━━━━━━━━━┙         ┕━━━━━━━━━┙         ┕━
 ```
 
-Alternatively, we could use the bit pattern `10101010`, giving a higher “switching frequency” and thus a smoother output (after low-pass filtering):
+Alternatively, we could use the bit pattern `01010101`, giving a higher switching frequency and thus a smoother output (after low-pass filtering):
 
 ```
  ┌────── byte 1 ─────┬────── byte 2 ─────┬────── byte 3 ─────┐
@@ -74,8 +100,8 @@ and the maximum is 90%:
  ┕━┙                 ┕━┙                 ┕━┙                 ┕━
 ```
 
-With this technique we can now approximate an audio signal. This isn’t strictly PWM since bit patterns with different switching frequencies can be used as seen above, but the principle is the same. Obviously, the audio signal created in this way has a non-zero DC component (i.e. average value), and a capacitor is required between the TX pin and the audio output device to remove the DC bias.
+> Being unable to go to 0% and 100% should have little effect, as it just linearly shrinks the output range to 10% — 90%.
 
-> With a 5V / 3.3V UART and a pair of headphones, a 1k ~ 10k resistor between the TX pin and the headphones seems to work well enough.
+## Byte patterns
 
-Running the UART at 3M baud gives a “audio sample rate” of 300k: a bit too high compared to the common 44.1k or 48k. We could simply resample our music to 300k, convert each sample to one “PWM” byte, and feed it to the UART; however, with only 9 possible signal levels (compared to the 256 levels with normal 8-bit samples or 65536 with 16-bit samples), the result is rather unpleasant.
+==TODO==
