@@ -2,7 +2,7 @@
 
 ## Usage
 
-In the “samples” folder there are ready-made files that can be fed directly to a serial port. For a quick test, take the file at the appropriate speed, and start from step 6 below.
+In the “samples” folder there are ready-made files that can be fed directly to a serial port. For a quick test, grab the `.bin` file at the appropriate speed, and start from step 6 below.
 
 All filenames in the commands below are examples only and do not affect how this program functions. These instructions, especially feeding the resulting file to the serial port, assume a Linux machine.
 
@@ -19,7 +19,7 @@ All filenames in the commands below are examples only and do not affect how this
 
 4. Convert your audio file to a mono WAV at this sample rate. Examples:
       - With FFmpeg: `ffmpeg -i input.mp3 -ar <sample_rate> -ac 1 resampled.wav`
-    
+      
       - With SoX (supports mostly uncompressed formats only): `sox input.flac -r <sample_rate> -c 1 resampled.wav`
 
 5. Run this program: `./uart_pwm resampled.wav output.bin`
