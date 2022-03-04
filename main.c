@@ -72,29 +72,29 @@ int main(int argc, char const *argv[])
         {
             break;
         }
-        printf("s=%+0.2f, ", sample);
+        //printf("s=%+0.2f, ", sample);
 
         double sample_normalized = (sample + 1.0) * 4; // 0 to 8, 9 levels
         int sample_quantized = (int)sample_normalized;
-        printf("q=%d, ", sample_quantized);
+        //printf("q=%d, ", sample_quantized);
 
         // Amount of correction needed as fraction of a level
         // 0 <= error < 1
         double error = sample_normalized - sample_quantized;
-        printf("e=%0.2lf, ", error);
+        //printf("e=%0.2lf, ", error);
 
         // Choose from 8 fine levels to compensate for error
         // 0 <= dither_step < 8 fits DITHER_PATTERNS[]
         int dither_step = error * 8;
-        printf("d=%d, ", dither_step);
+        //printf("d=%d, ", dither_step);
 
         for (int i = 0; i < 8; i++)
         {
-            printf("%d ", sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0));
+            //printf("%d ", sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0));
             uint8_t byte_to_write = BYTE_WAVEFORMS[sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0)];
             fputc(byte_to_write, file_binary_out);
         }
-        printf("\n");
+        //printf("\n");
     }
 
     sf_close(file_audio_in);
