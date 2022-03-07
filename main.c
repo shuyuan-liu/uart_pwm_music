@@ -1,16 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <sndfile.h>
-
-// There are 9 possible output waveforms (and thus different duty cycles)
-// for one byte. This gives 8 intervals between the levels.
-const int NUM_LEVELS = 8;
-
-// For 8 bit samples, this many values will result in each PWM level
-const double INTERVAL_SIZE = 1.0 / NUM_LEVELS;
-
-// Dithering by 8x, each sample approximated with 8 output bytes
-const double DITHERED_INTERVAL_SIZE = INTERVAL_SIZE / 8;
+#include <math.h>
 
 const uint8_t BYTE_WAVEFORMS[9] =
 {
@@ -26,21 +17,13 @@ const uint8_t BYTE_WAVEFORMS[9] =
     0xFF  // ▁▆▆▆▆▆▆▆▆▆
 };
 
-// Every sample represented by 8 bytes. + means this byte is promoted to use
-// the next higher PWM level.
-const uint8_t DITHER_PATTERNS[8] =
+const double ERR_DIFFUSION_PATTERN[8] =
 {
-    // LSB for the first byte in each 8-byte group
-    0x00, // ________
-    0x01, // _______+
-    0x11, // ___+___+
-    0x49, // _+__+__+
-    0x55, // _+_+_+_+ --- antisymmetric above and below
-    0x6D, // _++_++_+
-    0x77, // _+++_+++
-    0x7F  // _+++++++
-    // No 0xFF because "++++++++" would overlap the next higher "________".
-};
+    0.195, 0.1875, 0.1728, 0.1515, 0.1243, 0.0924, 0.0569, 0.0192
+}; // Should sum to 1
+
+void shift_array_left(double* array, size_t n);
+
 
 int main(int argc, char const *argv[])
 {
@@ -65,6 +48,9 @@ int main(int argc, char const *argv[])
         return 2;
     }
 
+
+    double errors[1 + 8] = {0}; // 1 for current sample and 8 for next 8 samples
+
     while (1)
     {
         double sample;
@@ -72,33 +58,34 @@ int main(int argc, char const *argv[])
         {
             break;
         }
-        //printf("s=%+0.2f, ", sample);
 
         double sample_normalized = (sample + 1.0) * 4; // 0 to 8, 9 levels
-        int sample_quantized = (int)sample_normalized;
-        //printf("q=%d, ", sample_quantized);
-
-        // Amount of correction needed as fraction of a level
-        // 0 <= error < 1
-        double error = sample_normalized - sample_quantized;
-        //printf("e=%0.2lf, ", error);
-
-        // Choose from 8 fine levels to compensate for error
-        // 0 <= dither_step < 8 fits DITHER_PATTERNS[]
-        int dither_step = error * 8;
-        //printf("d=%d, ", dither_step);
-
+        int    sample_quantized = round(sample_normalized - errors[0]);
+        double error = sample_quantized - sample_normalized;
+        
+        // Diffuse error to next 8 samples
         for (int i = 0; i < 8; i++)
         {
-            //printf("%d ", sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0));
-            uint8_t byte_to_write = BYTE_WAVEFORMS[sample_quantized + (((1 << i) & DITHER_PATTERNS[dither_step]) ? 1 : 0)];
-            fputc(byte_to_write, file_binary_out);
+            errors[i + 1] += error * ERR_DIFFUSION_PATTERN[i];
         }
-        //printf("\n");
+
+        fputc(BYTE_WAVEFORMS[sample_quantized], file_binary_out);
+
+        shift_array_left(errors, 1 + 8);
     }
 
     sf_close(file_audio_in);
     fclose(file_binary_out);
 
     return 0;
+}
+
+
+void shift_array_left(double* array, size_t n)
+{
+    for (int i = 0; i < n - 1; i++)
+    {
+        array[i] = array[i + 1];
+    }
+    array[n - 1] = 0;
 }
