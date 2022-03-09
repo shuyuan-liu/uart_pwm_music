@@ -4,26 +4,27 @@
 #include <math.h>
 
 const uint8_t BYTE_WAVEFORMS[9] =
-{
-    // With start and stop bits, sent LSB first:
-    0x00, // ▁▁▁▁▁▁▁▁▁▆
-    0x08, // ▁▁▁▁▆▁▁▁▁▆
-    0x12, // ▁▁▆▁▁▆▁▁▁▆
-    0x29, // ▁▆▁▁▆▁▆▁▁▆
-    0x55, // ▁▆▁▆▁▆▁▆▁▆ --- antisymmetric above and below
-    0x6B, // ▁▆▆▁▆▁▆▆▁▆
-    0xB7, // ▁▆▆▆▁▆▆▁▆▆
-    0xEF, // ▁▆▆▆▆▁▆▆▆▆
-    0xFF  // ▁▆▆▆▆▆▆▆▆▆
+    {
+        // With start and stop bits, sent LSB first:
+        0x00, // ▁▁▁▁▁▁▁▁▁▆
+        0x08, // ▁▁▁▁▆▁▁▁▁▆
+        0x12, // ▁▁▆▁▁▆▁▁▁▆
+        0x29, // ▁▆▁▁▆▁▆▁▁▆
+        0x55, // ▁▆▁▆▁▆▁▆▁▆ --- antisymmetric above and below
+        0x6B, // ▁▆▆▁▆▁▆▆▁▆
+        0xB7, // ▁▆▆▆▁▆▆▁▆▆
+        0xEF, // ▁▆▆▆▆▁▆▆▆▆
+        0xFF  // ▁▆▆▆▆▆▆▆▆▆
 };
 
-const double ERR_DIFFUSION_PATTERN[8] =
+int cap(int val, int min, int max)
 {
-    0.195, 0.1875, 0.1728, 0.1515, 0.1243, 0.0924, 0.0569, 0.0192
-}; // Should sum to 1
-
-void shift_array_left(double* array, size_t n);
-
+    if (val < min)
+        return min;
+    if (val > max)
+        return max;
+    return val;
+}
 
 int main(int argc, char const *argv[])
 {
@@ -40,6 +41,7 @@ int main(int argc, char const *argv[])
         printf("Couldn't open %s for input\n", argv[1]);
         return 2;
     }
+    printf("sample rate = %d\n", audio_input_format.samplerate);
 
     FILE *file_binary_out = fopen(argv[2], "wb+");
     if (!file_binary_out)
@@ -48,44 +50,23 @@ int main(int argc, char const *argv[])
         return 2;
     }
 
-
-    double errors[1 + 8] = {0}; // 1 for current sample and 8 for next 8 samples
-
+    static double error = 0;
     while (1)
     {
         double sample;
+
         if (!sf_read_double(file_audio_in, &sample, 1)) // -1 <= sample <= 1
-        {
             break;
-        }
 
         double sample_normalized = (sample + 1.0) * 4; // 0 to 8, 9 levels
-        int    sample_quantized = round(sample_normalized - errors[0]);
-        double error = sample_quantized - sample_normalized;
-        
-        // Diffuse error to next 8 samples
-        for (int i = 0; i < 8; i++)
-        {
-            errors[i + 1] += error * ERR_DIFFUSION_PATTERN[i];
-        }
+        int sample_quantized = cap(round(sample_normalized - error), 0, 8);
+        error = sample_quantized - sample_normalized;
 
         fputc(BYTE_WAVEFORMS[sample_quantized], file_binary_out);
-
-        shift_array_left(errors, 1 + 8);
     }
 
     sf_close(file_audio_in);
     fclose(file_binary_out);
 
     return 0;
-}
-
-
-void shift_array_left(double* array, size_t n)
-{
-    for (int i = 0; i < n - 1; i++)
-    {
-        array[i] = array[i + 1];
-    }
-    array[n - 1] = 0;
 }
