@@ -101,3 +101,9 @@ and the maximum is 90%:
 ## Byte Patterns
 
 ==TODO==
+
+## Music Sample Credits
+
+[Traveler – Roa (No Copyright Music) - YouTube](https://www.youtube.com/watch?v=Ijb3m-gomBk)
+
+[Everything Feels New | Royalty Free Music - Pixabay](https://pixabay.com/music/beats-everything-feels-new-15241/)
