@@ -30,7 +30,6 @@ int main(int argc, char const* argv[])
         return 2;
     }
 
-    size_t samples_precessed = 0;
     double input_buffer[10] = {0};
     double output_buffer[10] = {0};
     double integrator_1 = 0.0;
@@ -62,13 +61,7 @@ int main(int argc, char const* argv[])
 
         sf_write_double(file_audio_out, output_buffer, 10);
 
-        fputc(out_byte, file_binary_out);   
-        
-        samples_precessed += 10;
-        // if (samples_precessed % 10000 == 0) {
-        //     printf("%.1f%%\n",
-        //            (double)samples_precessed / audio_input_format.frames * 100);
-        // }
+        fputc(out_byte, file_binary_out);
     }
 
     sf_close(file_audio_in);
