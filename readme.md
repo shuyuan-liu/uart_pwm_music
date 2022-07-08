@@ -1,3 +1,5 @@
+***Please note this documentation is out of date and doesn't reflect recent changes in the code. As you can see it's also incomplete. It will be updated and expanded at some point in the near future (in a few months perhaps).***
+
 # Play (fairly good quality) music through your USB-to-UART adaptor!
 
 ## Usage
